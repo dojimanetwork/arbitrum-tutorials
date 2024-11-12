@@ -5,9 +5,12 @@ const {
   addDefaultLocalNetwork,
   getL2Network,
   Erc20Bridger,
-  L1ToL2MessageStatus,
+  L1ToL2MessageStatus, addCustomNetwork,
 } = require('@arbitrum/sdk')
 const { arbLog, requireEnvVariables } = require('arb-shared-dependencies')
+const path = require("path");
+const fs = require("fs");
+const { ArbSdkError } = require("@arbitrum/sdk/dist/lib/dataEntities/errors");
 require('dotenv').config()
 requireEnvVariables(['DEVNET_PRIVKEY', 'L1RPC', 'L2RPC'])
 
@@ -30,22 +33,27 @@ const tokenAmount = BigNumber.from(50)
 const main = async () => {
   await arbLog('Deposit token using Arbitrum SDK')
 
-  /**
-   * Add the default local network configuration to the SDK
-   * to allow this script to run on a local node
-   */
-  addDefaultLocalNetwork()
+  const pathToLocalNetworkFile = path.join(__dirname, '../../../', 'network.json')
+  if (!fs.existsSync(pathToLocalNetworkFile)) {
+    throw new ArbSdkError('localNetwork.json not found, must gen:network first')
+  }
+
+  const localNetworksFile = fs.readFileSync(pathToLocalNetworkFile, 'utf8')
+  const parentChain = JSON.parse(localNetworksFile).l1Network
+  const childChain = JSON.parse(localNetworksFile).l2Network
+
+  addCustomNetwork({
+    customL1Network: parentChain,
+    customL2Network: childChain,
+  })
 
   /**
    * For the purpose of our tests, here we deploy an standard ERC20 token (DappToken) to L1
    * It sends its deployer (us) the initial supply of 1000
    */
   console.log('Deploying the test DappToken to L1:')
-  const L1DappToken = await (
-    await ethers.getContractFactory('DappToken')
-  ).connect(l1Wallet)
-  const l1DappToken = await L1DappToken.deploy(1000)
-  await l1DappToken.deployed()
+  const L11DappToken = await (await ethers.getContractFactory('DappToken')).connect(l1Wallet)
+  const l1DappToken = L11DappToken.attach("0xFeb7a584ef86A4aBaD34f185b2b73FD0D01B851F")
   console.log(`DappToken is deployed to L1 at ${l1DappToken.address}`)
 
   /**
@@ -111,6 +119,20 @@ const main = async () => {
     l2Provider: l2Provider,
   })
 
+
+  dappToken {
+
+    func ddepositTOROllup() {
+
+
+      const depositTx = await erc20Bridger.deposit({
+        amount: tokenDepositAmount,
+        erc20L1Address: l1Erc20Address,
+        l1Signer: l1Wallet,
+        l2Provider: l2Provider,
+      })
+    }
+  }
   /**
    * Now we wait for L1 and L2 side of transactions to be confirmed
    */
@@ -125,11 +147,11 @@ const main = async () => {
    */
   l2Result.complete
     ? console.log(
-        `L2 message successful: status: ${L1ToL2MessageStatus[l2Result.status]}`
-      )
+      `L2 message successful: status: ${L1ToL2MessageStatus[l2Result.status]}`
+    )
     : console.log(
-        `L2 message failed: status ${L1ToL2MessageStatus[l2Result.status]}`
-      )
+      `L2 message failed: status ${L1ToL2MessageStatus[l2Result.status]}`
+    )
 
   /**
    * Get the Bridge token balance
@@ -156,7 +178,11 @@ const main = async () => {
     l1Erc20Address,
     l1Provider
   )
+
+  console.log('l2TokenAddress', l2TokenAddress)
+
   const l2Token = erc20Bridger.getL2TokenContract(l2Provider, l2TokenAddress)
+
 
   const testWalletL2Balance = (
     await l2Token.functions.balanceOf(l2Wallet.address)

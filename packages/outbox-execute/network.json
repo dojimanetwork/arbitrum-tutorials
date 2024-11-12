@@ -1,0 +1,35 @@
+{
+    "l1Network": {
+        "blockTime": 10,
+        "chainId": 187,
+        "explorerUrl": "",
+        "isCustom": true,
+        "name": "dojimachain",
+        "partnerChainIDs": [
+            1000
+        ],
+        "isArbitrum": false
+    },
+    "l2Network": {
+        "chainId": 1000,
+        "confirmPeriodBlocks": 1,
+        "ethBridge": {
+            "bridge": "0x5B21F73309dffC703Dc5086b93D9a0E60a848928",
+            "inbox": "0x28D3E8D255Ac8B55d9BA8489Ac0D1B0Fc071C078",
+            "outbox": "0x5065677950282C55a5BD28590d3B0e59c3193C65",
+            "rollup": "0xBEb8722D6717fD7d0B6CA73c1AEDFd508E706dE8",
+            "sequencerInbox": "0x1fC73DE306Bce73A60C2A68aC822D3EDC5B04Dd5"
+        },
+        "explorerUrl": "",
+        "isArbitrum": true,
+        "isCustom": true,
+        "name": "ArbLocal",
+        "partnerChainID": 187,
+        "retryableLifetimeSeconds": 604800,
+        "nitroGenesisBlock": 0,
+        "nitroGenesisL1Block": 0,
+        "depositTimeout": 900000
+    },
+    "l1TokenBridgeCreator": "0xE1b22a1292FC36998e6d17810cFAE99613d14317",
+    "retryableSender": "0x68f62236820F52bB8121482Db1F50DD03ac78536"
+}

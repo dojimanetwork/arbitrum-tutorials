@@ -3,9 +3,12 @@ const {
   EthBridger,
   getL2Network,
   addDefaultLocalNetwork,
+  addCustomNetwork,
 } = require('@arbitrum/sdk')
 const { parseEther } = utils
 const { arbLog, requireEnvVariables } = require('arb-shared-dependencies')
+const path = require("path");
+const fs = require("fs");
 require('dotenv').config()
 requireEnvVariables(['DEVNET_PRIVKEY', 'L2RPC', 'L1RPC'])
 
@@ -13,22 +16,32 @@ requireEnvVariables(['DEVNET_PRIVKEY', 'L2RPC', 'L1RPC'])
  * Set up: instantiate L2 wallet connected to provider
  */
 const walletPrivateKey = process.env.DEVNET_PRIVKEY
-const l2Provider = new providers.JsonRpcProvider(process.env.L2RPC)
+const l2Provider = new providers.JsonRpcBatchProvider(process.env.L2RPC)
 const l2Wallet = new Wallet(walletPrivateKey, l2Provider)
 
 /**
  * Set the amount to be withdrawn from L2 (in wei)
- */
-const ethFromL2WithdrawAmount = parseEther('0.000001')
+ **/
+const ethFromL2WithdrawAmount = parseEther('10.000001')
+
+console.log('Withdrawal Balance', ethFromL2WithdrawAmount)
 
 const main = async () => {
   await arbLog('Withdraw Eth via Arbitrum SDK')
 
-  /**
-   * Add the default local network configuration to the SDK
-   * to allow this script to run on a local node
-   */
-  addDefaultLocalNetwork()
+  const pathToLocalNetworkFile = path.join(__dirname, '../../../', 'network.json')
+  if (!fs.existsSync(pathToLocalNetworkFile)) {
+    throw new ArbSdkError('localNetwork.json not found, must gen:network first')
+  }
+
+  const localNetworksFile = fs.readFileSync(pathToLocalNetworkFile, 'utf8')
+  const parentChain = JSON.parse(localNetworksFile).l1Network
+  const childChain = JSON.parse(localNetworksFile).l2Network
+
+  addCustomNetwork({
+    customL1Network: parentChain,
+    customL2Network: childChain,
+  })
 
   /**
    * Use l2Network to create an Arbitrum SDK EthBridger instance

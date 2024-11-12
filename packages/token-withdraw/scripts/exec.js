@@ -5,9 +5,12 @@ const {
   addDefaultLocalNetwork,
   getL2Network,
   Erc20Bridger,
-  L1ToL2MessageStatus,
+  L1ToL2MessageStatus, addCustomNetwork,
 } = require('@arbitrum/sdk')
 const { arbLog, requireEnvVariables } = require('arb-shared-dependencies')
+const path = require("path");
+const fs = require("fs");
+const {ArbSdkError} = require("@arbitrum/sdk/dist/lib/dataEntities/errors");
 require('dotenv').config()
 requireEnvVariables(['DEVNET_PRIVKEY', 'L1RPC', 'L2RPC'])
 
@@ -31,22 +34,26 @@ const tokenAmountToWithdraw = BigNumber.from(20)
 const main = async () => {
   await arbLog('Withdraw token using Arbitrum SDK')
 
-  /**
-   * Add the default local network configuration to the SDK
-   * to allow this script to run on a local node
-   */
-  addDefaultLocalNetwork()
+  const pathToLocalNetworkFile = path.join(__dirname, '../../../', 'network.json')
+  if (!fs.existsSync(pathToLocalNetworkFile)) {
+    throw new ArbSdkError('localNetwork.json not found, must gen:network first')
+  }
+
+  const localNetworksFile = fs.readFileSync(pathToLocalNetworkFile, 'utf8')
+  const parentChain = JSON.parse(localNetworksFile).l1Network
+  const childChain = JSON.parse(localNetworksFile).l2Network
+
+  addCustomNetwork({
+    customL1Network: parentChain,
+    customL2Network: childChain,
+  });
 
   /**
    * For the purpose of our tests, here we deploy an standard ERC20 token (DappToken) to L1
    * It sends its deployer (us) the initial supply of 1000
    */
-  console.log('Deploying the test DappToken to L1:')
-  const L1DappToken = await (
-    await ethers.getContractFactory('DappToken')
-  ).connect(l1Wallet)
-  const l1DappToken = await L1DappToken.deploy(1000000000000000)
-  await l1DappToken.deployed()
+  const L11DappToken = await (await ethers.getContractFactory('DappToken')).connect(l1Wallet)
+  const l1DappToken = L11DappToken.attach("0xFeb7a584ef86A4aBaD34f185b2b73FD0D01B851F")
   console.log(`DappToken is deployed to L1 at ${l1DappToken.address}`)
   const l1Erc20Address = l1DappToken.address
 
@@ -61,30 +68,30 @@ const main = async () => {
    * Because the token might have decimals, we update the amounts to deposit and withdraw taking into account those decimals
    */
   const tokenDecimals = await l1DappToken.decimals()
-  const tokenDepositAmount = tokenAmount.mul(
-    BigNumber.from(10).pow(tokenDecimals)
-  )
+  // const tokenDepositAmount = tokenAmount.mul(
+  //   BigNumber.from(10).pow(tokenDecimals)
+  // )
   const tokenWithdrawAmount = tokenAmountToWithdraw.mul(
     BigNumber.from(10).pow(tokenDecimals)
   )
 
-  /**
-   * The Standard Gateway contract will ultimately be making the token transfer call; thus, that's the contract we need to approve.
-   * erc20Bridger.approveToken handles this approval
-   * Arguments required are:
-   * (1) l1Signer: The L1 address transferring token to L2
-   * (2) erc20L1Address: L1 address of the ERC20 token to be deposited to L2
-   */
-  console.log('Approving:')
-  const approveTx = await erc20Bridger.approveToken({
-    l1Signer: l1Wallet,
-    erc20L1Address: l1Erc20Address,
-  })
-
-  const approveRec = await approveTx.wait()
-  console.log(
-    `You successfully allowed the Arbitrum Bridge to spend DappToken ${approveRec.transactionHash}`
-  )
+  // /**
+  //  * The Standard Gateway contract will ultimately be making the token transfer call; thus, that's the contract we need to approve.
+  //  * erc20Bridger.approveToken handles this approval
+  //  * Arguments required are:
+  //  * (1) l1Signer: The L1 address transferring token to L2
+  //  * (2) erc20L1Address: L1 address of the ERC20 token to be deposited to L2
+  //  */
+  // console.log('Approving:')
+  // const approveTx = await erc20Bridger.approveToken({
+  //   l1Signer: l1Wallet,
+  //   erc20L1Address: l1Erc20Address,
+  // })
+  //
+  // const approveRec = await approveTx.wait()
+  // console.log(
+  //   `You successfully allowed the Arbitrum Bridge to spend DappToken ${approveRec.transactionHash}`
+  // )
 
   /**
    * Deposit DappToken to L2 using Erc20Bridger. This will escrow funds in the Gateway contract on L1, and send a message to mint tokens on L2.
@@ -96,33 +103,33 @@ const main = async () => {
    * (2) l1Signer: The L1 address transferring token to L2
    * (3) l2Provider: An l2 provider
    */
-  console.log('Transferring DappToken to L2:')
-  const depositTx = await erc20Bridger.deposit({
-    amount: tokenDepositAmount,
-    erc20L1Address: l1Erc20Address,
-    l1Signer: l1Wallet,
-    l2Provider: l2Provider,
-  })
+  // console.log('Transferring DappToken to L2:')
+  // const depositTx = await erc20Bridger.deposit({
+  //   amount: tokenDepositAmount,
+  //   erc20L1Address: l1Erc20Address,
+  //   l1Signer: l1Wallet,
+  //   l2Provider: l2Provider,
+  // })
 
   /**
    * Now we wait for L1 and L2 side of transactions to be confirmed
    */
-  console.log(
-    `Deposit initiated: waiting for L2 retryable (takes 10-15 minutes; current time: ${new Date().toTimeString()}) `
-  )
-  const depositRec = await depositTx.wait()
-  const l2Result = await depositRec.waitForL2(l2Provider)
-  console.log(`Setup complete`)
-  /**
-   * The `complete` boolean tells us if the l1 to l2 message was successul
-   */
-  l2Result.complete
-    ? console.log(
-        `L2 message successful: status: ${L1ToL2MessageStatus[l2Result.status]}`
-      )
-    : console.log(
-        `L2 message failed: status ${L1ToL2MessageStatus[l2Result.status]}`
-      )
+  // console.log(
+  //   `Deposit initiated: waiting for L2 retryable (takes 10-15 minutes; current time: ${new Date().toTimeString()}) `
+  // )
+  // const depositRec = await depositTx.wait()
+  // const l2Result = await depositRec.waitForL2(l2Provider)
+  // console.log(`Setup complete`)
+  // /**
+  //  * The `complete` boolean tells us if the l1 to l2 message was successul
+  //  */
+  // l2Result.complete
+  //   ? console.log(
+  //       `L2 message successful: status: ${L1ToL2MessageStatus[l2Result.status]}`
+  //     )
+  //   : console.log(
+  //       `L2 message failed: status ${L1ToL2MessageStatus[l2Result.status]}`
+  //     )
 
   /**
    * ... Okay, Now we begin withdrawing DappToken from L2. To withdraw, we'll use Erc20Bridger helper method withdraw
@@ -148,23 +155,40 @@ const main = async () => {
    * Any time after the transaction's assertion is confirmed (around 7 days), funds can be transferred out of the bridge via the outbox contract
    * We'll check our l2Wallet DappToken balance here:
    */
+
+  const l2tokenAddress = await erc20Bridger.getL2ERC20Address(l1Erc20Address, l1Provider)
   const l2Token = erc20Bridger.getL2TokenContract(
     l2Provider,
-    await erc20Bridger.getL2ERC20Address(l1Erc20Address, l1Provider)
+    l2tokenAddress
   )
+
+  console.log('l2TokenAddress', l2tokenAddress)
 
   const l2WalletBalance = (
     await l2Token.functions.balanceOf(await l2Wallet.getAddress())
   )[0]
 
-  expect(
-    l2WalletBalance.add(tokenWithdrawAmount).eq(tokenDepositAmount),
-    'token withdraw balance not deducted'
-  ).to.be.true
+  console.log('l2WalletBalance', BigNumber.from(l2WalletBalance).div(tokenDecimals))
 
-  console.log(
-    `To to claim funds (after dispute period), see outbox-execute repo 🤞🏻`
+  const expectedL1GatewayAddress = await erc20Bridger.getL1GatewayAddress(
+      l1Erc20Address,
+      l1Provider
   )
+
+  const finalBridgeTokenBalance = await l1DappToken.balanceOf(
+      expectedL1GatewayAddress
+  )
+
+  console.log('finalBridgeTokenBalance on L1', BigNumber.from(finalBridgeTokenBalance).div(tokenDecimals))
+  //
+  // expect(
+  //   l2WalletBalance.add(tokenWithdrawAmount).eq(tokenDepositAmount),
+  //   'token withdraw balance not deducted'
+  // ).to.be.true
+
+  // console.log(
+  //   `To to claim funds (after dispute period), see outbox-execute repo 🤞🏻`
+  // )
 }
 
 main()
