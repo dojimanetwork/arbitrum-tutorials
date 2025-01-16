@@ -1,11 +1,10 @@
 const { providers, Wallet } = require('ethers')
-const {
-  addDefaultLocalNetwork,
-  L2TransactionReceipt,
-  L2ToL1MessageStatus,
-} = require('@arbitrum/sdk')
+const { ChildTransactionReceipt, ChildToParentMessageStatus, registerCustomArbitrumNetwork, ChildToParentMessage } = require('@arbitrum/sdk')
 const { arbLog, requireEnvVariables } = require('arb-shared-dependencies')
+const path = require('path')
+const fs = require('fs')
 require('dotenv').config()
+
 requireEnvVariables(['DEVNET_PRIVKEY', 'L2RPC', 'L1RPC'])
 
 /**
@@ -25,7 +24,19 @@ module.exports = async txnHash => {
    * Add the default local network configuration to the SDK
    * to allow this script to run on a local node
    */
-  addDefaultLocalNetwork()
+  // addDefaultLocalNetwork()
+
+  const pathToLocalNetworkFile = path.join(__dirname, '../../../', 'network.json')
+  if (!fs.existsSync(pathToLocalNetworkFile)) {
+    throw new ArbSdkError('localNetwork.json not found, must gen:network first')
+  }
+
+  const localNetworksFile = fs.readFileSync(pathToLocalNetworkFile, 'utf8')
+  // const parentChain = JSON.parse(localNetworksFile).l1Network
+  const childChain = JSON.parse(localNetworksFile).l2Network
+
+  // const parentNetwork = registerCustomArbitrumNetwork(parentChain)
+  const childNetwork = registerCustomArbitrumNetwork(childChain)
 
   /**
    / * We start with a txn hash; we assume this is transaction that triggered an L2 to L1 Message on L2 (i.e., ArbSys.sendTxToL1)
@@ -41,19 +52,19 @@ module.exports = async txnHash => {
    * First, let's find the Arbitrum txn from the txn hash provided
    */
   const receipt = await l2Provider.getTransactionReceipt(txnHash)
-  const l2Receipt = new L2TransactionReceipt(receipt)
+  const l2Receipt = new ChildTransactionReceipt(receipt)
 
   /**
    * Note that in principle, a single transaction could trigger any number of outgoing messages; the common case will be there's only one.
    * For the sake of this script, we assume there's only one / just grad the first one.
    */
-  const messages = await l2Receipt.getL2ToL1Messages(l1Wallet)
+  const messages = await l2Receipt.getChildToParentMessages(l1Wallet)
   const l2ToL1Msg = messages[0]
 
   /**
    * Check if already executed
    */
-  if ((await l2ToL1Msg.status(l2Provider)) == L2ToL1MessageStatus.EXECUTED) {
+  if ((await l2ToL1Msg.status(l2Provider)) == ChildToParentMessageStatus.EXECUTED) {
     console.log(`Message already executed! Nothing else to do here`)
     process.exit(1)
   }

@@ -5,9 +5,12 @@ const {
   addDefaultLocalNetwork,
   getL2Network,
   Erc20Bridger,
-  L1ToL2MessageStatus,
+  L1ToL2MessageStatus, addCustomNetwork,
 } = require('@arbitrum/sdk')
 const { arbLog, requireEnvVariables } = require('arb-shared-dependencies')
+const path = require("path");
+const fs = require("fs");
+const { ArbSdkError } = require("@arbitrum/sdk/dist/lib/dataEntities/errors");
 require('dotenv').config()
 requireEnvVariables(['DEVNET_PRIVKEY', 'L1RPC', 'L2RPC'])
 
@@ -25,28 +28,36 @@ const l2Wallet = new Wallet(walletPrivateKey, l2Provider)
 /**
  * Set the amount of token to be transferred to L2
  */
-const tokenAmount = BigNumber.from(50)
+const tokenAmount = BigNumber.from(60)
 
 const main = async () => {
   await arbLog('Deposit token using Arbitrum SDK')
 
-  /**
-   * Add the default local network configuration to the SDK
-   * to allow this script to run on a local node
-   */
-  addDefaultLocalNetwork()
+  const pathToLocalNetworkFile = path.join(__dirname, '../../../', 'network.json')
+  if (!fs.existsSync(pathToLocalNetworkFile)) {
+    throw new ArbSdkError('localNetwork.json not found, must gen:network first')
+  }
+
+  const localNetworksFile = fs.readFileSync(pathToLocalNetworkFile, 'utf8')
+  const parentChain = JSON.parse(localNetworksFile).l1Network
+  const childChain = JSON.parse(localNetworksFile).l2Network
+
+  addCustomNetwork({
+    customL1Network: parentChain,
+    customL2Network: childChain,
+  })
 
   /**
    * For the purpose of our tests, here we deploy an standard ERC20 token (DappToken) to L1
    * It sends its deployer (us) the initial supply of 1000
    */
-  console.log('Deploying the test DappToken to L1:')
-  const L1DappToken = await (
-    await ethers.getContractFactory('DappToken')
+  const L1WrappedCrossToken = await (
+    await ethers.getContractFactory('WrappedCrossERC20Token')
   ).connect(l1Wallet)
-  const l1DappToken = await L1DappToken.deploy(1000)
-  await l1DappToken.deployed()
-  console.log(`DappToken is deployed to L1 at ${l1DappToken.address}`)
+  const l1WrappedCrossToken = await L1WrappedCrossToken.attach("0xBBD643B03bD249050699EADc555716dd28e7C37D")
+  console.log(
+    `WrappedCrossERC20Token is deployed to L1 at ${l1WrappedCrossToken.address}`
+  )
 
   /**
    * Use l2Network to create an Arbitrum SDK Erc20Bridger instance
@@ -58,19 +69,19 @@ const main = async () => {
   /**
    * We get the address of L1 Gateway for our DappToken, which later helps us to get the initial token balance of Bridge (before deposit)
    */
-  const l1Erc20Address = l1DappToken.address
+  const l1Erc20Address = l1WrappedCrossToken.address
   const expectedL1GatewayAddress = await erc20Bridger.getL1GatewayAddress(
     l1Erc20Address,
     l1Provider
   )
-  const initialBridgeTokenBalance = await l1DappToken.balanceOf(
+  const initialBridgeTokenBalance = await l1WrappedCrossToken.balanceOf(
     expectedL1GatewayAddress
   )
 
   /**
    * Because the token might have decimals, we update the amount to deposit taking into account those decimals
    */
-  const tokenDecimals = await l1DappToken.decimals()
+  const tokenDecimals = await l1WrappedCrossToken.decimals()
   const tokenDepositAmount = tokenAmount.mul(
     BigNumber.from(10).pow(tokenDecimals)
   )
@@ -90,7 +101,7 @@ const main = async () => {
 
   const approveRec = await approveTx.wait()
   console.log(
-    `You successfully allowed the Arbitrum Bridge to spend DappToken ${approveRec.transactionHash}`
+    `You successfully allowed the Arbitrum Bridge to spend Wrapped Token ${approveRec.transactionHash}`
   )
 
   /**
@@ -109,7 +120,7 @@ const main = async () => {
     erc20L1Address: l1Erc20Address,
     l1Signer: l1Wallet,
     l2Provider: l2Provider,
-  })
+  });
 
   /**
    * Now we wait for L1 and L2 side of transactions to be confirmed
@@ -125,16 +136,16 @@ const main = async () => {
    */
   l2Result.complete
     ? console.log(
-        `L2 message successful: status: ${L1ToL2MessageStatus[l2Result.status]}`
-      )
+      `L2 message successful: status: ${L1ToL2MessageStatus[l2Result.status]}`
+    )
     : console.log(
-        `L2 message failed: status ${L1ToL2MessageStatus[l2Result.status]}`
-      )
+      `L2 message failed: status ${L1ToL2MessageStatus[l2Result.status]}`
+    )
 
   /**
    * Get the Bridge token balance
    */
-  const finalBridgeTokenBalance = await l1DappToken.balanceOf(
+  const finalBridgeTokenBalance = await l1WrappedCrossToken.balanceOf(
     expectedL1GatewayAddress
   )
 
@@ -156,7 +167,11 @@ const main = async () => {
     l1Erc20Address,
     l1Provider
   )
+
+  console.log('l2TokenAddress', l2TokenAddress)
+
   const l2Token = erc20Bridger.getL2TokenContract(l2Provider, l2TokenAddress)
+
 
   const testWalletL2Balance = (
     await l2Token.functions.balanceOf(l2Wallet.address)

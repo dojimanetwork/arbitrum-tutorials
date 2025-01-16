@@ -1,0 +1,84 @@
+{
+  "l1Network": {
+    "partnerChainID": 807238,
+    "partnerChainIDs": [
+      807238
+    ],
+    "isArbitrum": false,
+    "confirmPeriodBlocks": 20,
+    "retryableLifetimeSeconds": 604800,
+    "nitroGenesisBlock": 0,
+    "nitroGenesisL1Block": 0,
+    "depositTimeout": 900000,
+    "explorerUrl": "https://explorer-test.dojima.network",
+    "chainID": 184,
+    "chainId": 184,
+    "isCustom": true,
+    "name": "Dojima",
+    "blockTime": 0.25,
+    "ethBridge": {
+      "bridge": "0x53d2Ca2541209ba0670EBCC19bef2813324eB2c9",
+      "inbox": "0x458fe327551b77661dfa0091C4e6350f2DeB4AB9",
+      "outbox": "0xCec7EdB0Fcc01802534967Db8455743f5edb59a7",
+      "rollup": "0x65a69e0B349079247240eF9861fCf6eB729767Fa",
+      "sequencerInbox": "0x48bD42823ed73c1D1f80325C22834FcD19879340"
+    },
+    "tokenBridge": {
+      "l1CustomGateway": "",
+      "l1ERC20Gateway": "",
+      "l1GatewayRouter": "",
+      "l1MultiCall": "",
+      "l1ProxyAdmin": "",
+      "l1Weth": "",
+      "l1WethGateway": "",
+      "l2CustomGateway": "",
+      "l2ERC20Gateway": "",
+      "l2GatewayRouter": "",
+      "l2Multicall": "",
+      "l2ProxyAdmin": "",
+      "l2Weth": "",
+      "l2WethGateway": ""
+    }
+  },
+  "l2Network": {
+    "partnerChainID": 184,
+    "partnerChainIDs": [184],
+    "chainID": 807238,
+    "chainId": 807238,
+    "confirmPeriodBlocks": 20,
+    "ethBridge": {
+      "bridge": "0x53d2Ca2541209ba0670EBCC19bef2813324eB2c9",
+      "inbox": "0x458fe327551b77661dfa0091C4e6350f2DeB4AB9",
+      "outbox": "0xCec7EdB0Fcc01802534967Db8455743f5edb59a7",
+      "rollup": "0x65a69e0B349079247240eF9861fCf6eB729767Fa",
+      "sequencerInbox": "0x48bD42823ed73c1D1f80325C22834FcD19879340"
+    },
+    "explorerUrl": "",
+    "isArbitrum": true,
+    "isCustom": true,
+    "blockTime": 0.25,
+    "name": "OrbitLocal",
+    "retryableLifetimeSeconds": 604800,
+    "nitroGenesisBlock": 0,
+    "nitroGenesisL1Block": 0,
+    "depositTimeout": 900000,
+    "tokenBridge": {
+      "l1CustomGateway": "0x70694DFeb1a66F87f064757af87B3D9840aBB36D",
+      "l1ERC20Gateway": "0xf759F61397B89a9d1Fb5e77755421F57F390F7dE",
+      "l1GatewayRouter": "0xc0ac75Ac07CE5EA199A9bD822E36e1eD51931F50",
+      "l1MultiCall": "0x7F02F892741B440619091fae0ca541bf632b8D84",
+      "l1ProxyAdmin": "0xe71e5fC2f2e054D64eD504426e4dA0A076C39404",
+      "l1Weth": "0x992C1566cAe261e932fC9fDbbEA225414904948A",
+      "l1WethGateway": "0x63D7005B6F01F843037BCA863810CbE8F71Cad40",
+      "l2CustomGateway": "0x023eb4729F9434Cf2Fd5DDb85F1A2a623501ba45",
+      "l2ERC20Gateway": "0xc65c1189938b5635D593167ceAB53A4ADEAb6e9B",
+      "l2GatewayRouter": "0x104E6e1566FB7F3255ddd5791615cC70BB996A90",
+      "l2Multicall": "0x9F498963b4e6087c0d9842224c72815a332e8074",
+      "l2ProxyAdmin": "0x1Bc9c54377a045eB94c01fD51ac214AAc2562FCD",
+      "l2Weth": "0x99C6BaA0D0030E9b9eA8c6A9E89f7129C09dEDc8",
+      "l2WethGateway": "0xf7365681cdB9E6a4740E7e9782D2D72b00a7d514"
+    }
+  },
+  "l1TokenBridgeCreator": "0xCe53A7006bFC96Ef0c2e915AA1f2c3d5471647d5",
+  "retryableSender": "0xbad425E62C130Ae290f7F8fF372a8b9D2ec79454"
+}
