@@ -28,7 +28,7 @@ const l2Wallet = new Wallet(walletPrivateKey, l2Provider)
 /**
  * Set the amount of token to be transferred to L2
  */
-const tokenAmount = BigNumber.from(50)
+const tokenAmount = BigNumber.from(60)
 
 const main = async () => {
   await arbLog('Deposit token using Arbitrum SDK')
@@ -51,10 +51,13 @@ const main = async () => {
    * For the purpose of our tests, here we deploy an standard ERC20 token (DappToken) to L1
    * It sends its deployer (us) the initial supply of 1000
    */
-  console.log('Deploying the test DappToken to L1:')
-  const L11DappToken = await (await ethers.getContractFactory('DappToken')).connect(l1Wallet)
-  const l1DappToken = L11DappToken.attach("0xFeb7a584ef86A4aBaD34f185b2b73FD0D01B851F")
-  console.log(`DappToken is deployed to L1 at ${l1DappToken.address}`)
+  const L1WrappedCrossToken = await (
+    await ethers.getContractFactory('WrappedCrossERC20Token')
+  ).connect(l1Wallet)
+  const l1WrappedCrossToken = await L1WrappedCrossToken.attach("0xBBD643B03bD249050699EADc555716dd28e7C37D")
+  console.log(
+    `WrappedCrossERC20Token is deployed to L1 at ${l1WrappedCrossToken.address}`
+  )
 
   /**
    * Use l2Network to create an Arbitrum SDK Erc20Bridger instance
@@ -66,19 +69,19 @@ const main = async () => {
   /**
    * We get the address of L1 Gateway for our DappToken, which later helps us to get the initial token balance of Bridge (before deposit)
    */
-  const l1Erc20Address = l1DappToken.address
+  const l1Erc20Address = l1WrappedCrossToken.address
   const expectedL1GatewayAddress = await erc20Bridger.getL1GatewayAddress(
     l1Erc20Address,
     l1Provider
   )
-  const initialBridgeTokenBalance = await l1DappToken.balanceOf(
+  const initialBridgeTokenBalance = await l1WrappedCrossToken.balanceOf(
     expectedL1GatewayAddress
   )
 
   /**
    * Because the token might have decimals, we update the amount to deposit taking into account those decimals
    */
-  const tokenDecimals = await l1DappToken.decimals()
+  const tokenDecimals = await l1WrappedCrossToken.decimals()
   const tokenDepositAmount = tokenAmount.mul(
     BigNumber.from(10).pow(tokenDecimals)
   )
@@ -98,7 +101,7 @@ const main = async () => {
 
   const approveRec = await approveTx.wait()
   console.log(
-    `You successfully allowed the Arbitrum Bridge to spend DappToken ${approveRec.transactionHash}`
+    `You successfully allowed the Arbitrum Bridge to spend Wrapped Token ${approveRec.transactionHash}`
   )
 
   /**
@@ -117,22 +120,8 @@ const main = async () => {
     erc20L1Address: l1Erc20Address,
     l1Signer: l1Wallet,
     l2Provider: l2Provider,
-  })
+  });
 
-
-  dappToken {
-
-    func ddepositTOROllup() {
-
-
-      const depositTx = await erc20Bridger.deposit({
-        amount: tokenDepositAmount,
-        erc20L1Address: l1Erc20Address,
-        l1Signer: l1Wallet,
-        l2Provider: l2Provider,
-      })
-    }
-  }
   /**
    * Now we wait for L1 and L2 side of transactions to be confirmed
    */
@@ -156,7 +145,7 @@ const main = async () => {
   /**
    * Get the Bridge token balance
    */
-  const finalBridgeTokenBalance = await l1DappToken.balanceOf(
+  const finalBridgeTokenBalance = await l1WrappedCrossToken.balanceOf(
     expectedL1GatewayAddress
   )
 

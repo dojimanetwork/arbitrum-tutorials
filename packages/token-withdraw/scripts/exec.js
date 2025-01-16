@@ -10,7 +10,7 @@ const {
 const { arbLog, requireEnvVariables } = require('arb-shared-dependencies')
 const path = require("path");
 const fs = require("fs");
-const {ArbSdkError} = require("@arbitrum/sdk/dist/lib/dataEntities/errors");
+const { ArbSdkError } = require("@arbitrum/sdk/dist/lib/dataEntities/errors");
 require('dotenv').config()
 requireEnvVariables(['DEVNET_PRIVKEY', 'L1RPC', 'L2RPC'])
 
@@ -52,10 +52,13 @@ const main = async () => {
    * For the purpose of our tests, here we deploy an standard ERC20 token (DappToken) to L1
    * It sends its deployer (us) the initial supply of 1000
    */
-  const L11DappToken = await (await ethers.getContractFactory('DappToken')).connect(l1Wallet)
-  const l1DappToken = L11DappToken.attach("0xFeb7a584ef86A4aBaD34f185b2b73FD0D01B851F")
-  console.log(`DappToken is deployed to L1 at ${l1DappToken.address}`)
-  const l1Erc20Address = l1DappToken.address
+  const L1WrappedCrossToken = await (await ethers.getContractFactory('WrappedCrossERC20Token')).connect(l1Wallet)
+  const l1WrappedCrossToken = await L1WrappedCrossToken.attach(
+    '0xBBD643B03bD249050699EADc555716dd28e7C37D'
+  )
+  console.log(`WrappedCrossERC20Token is deployed to L1 at ${l1WrappedCrossToken.address}`)
+
+  const l1Erc20Address = l1WrappedCrossToken.address
 
   /**
    * Use l2Network to create an Arbitrum SDK Erc20Bridger instance
@@ -67,7 +70,7 @@ const main = async () => {
   /**
    * Because the token might have decimals, we update the amounts to deposit and withdraw taking into account those decimals
    */
-  const tokenDecimals = await l1DappToken.decimals()
+  const tokenDecimals = await l1WrappedCrossToken.decimals()
   // const tokenDepositAmount = tokenAmount.mul(
   //   BigNumber.from(10).pow(tokenDecimals)
   // )
@@ -171,24 +174,15 @@ const main = async () => {
   console.log('l2WalletBalance', BigNumber.from(l2WalletBalance).div(tokenDecimals))
 
   const expectedL1GatewayAddress = await erc20Bridger.getL1GatewayAddress(
-      l1Erc20Address,
-      l1Provider
+    l1Erc20Address,
+    l1Provider
   )
 
-  const finalBridgeTokenBalance = await l1DappToken.balanceOf(
-      expectedL1GatewayAddress
+  const finalBridgeTokenBalance = await l1WrappedCrossToken.balanceOf(
+    expectedL1GatewayAddress
   )
 
   console.log('finalBridgeTokenBalance on L1', BigNumber.from(finalBridgeTokenBalance).div(tokenDecimals))
-  //
-  // expect(
-  //   l2WalletBalance.add(tokenWithdrawAmount).eq(tokenDepositAmount),
-  //   'token withdraw balance not deducted'
-  // ).to.be.true
-
-  // console.log(
-  //   `To to claim funds (after dispute period), see outbox-execute repo 🤞🏻`
-  // )
 }
 
 main()
